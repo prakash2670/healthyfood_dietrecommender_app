@@ -3,6 +3,7 @@ import streamlit as st
 import joblib
 from content_based_recommender import ContentBasedRecommender
 from popularity_recommender import PopularityRecommender
+from cf_recommender import CFRecommender
 
 # Load datasets
 @st.cache_data
@@ -26,13 +27,19 @@ def load_content_model():
             user_df=users
         )
 
+def load_collab_model():
+    return CFRecommender(
+        recipe_df=recipes, 
+        interactions_train_indexed_df=ratings.set_index("user_id"), 
+        user_df=users
+    )
+
 # Load or Initialize Popularity-Based Recommender
 @st.cache_resource
 def load_popularity_model():
     return PopularityRecommender(ratings, recipes)
 
-content_model = load_content_model()
-popularity_model = load_popularity_model()
+
 
 # Function to calculate BMR
 def calculate_bmr(weight, height, age, gender):
@@ -61,6 +68,8 @@ if user_id:
         user_id = int(user_id)
         if user_id in users['user_id'].values:
             # If user exists, use content-based recommendations
+            # content_model = load_content_model()
+            content_model = load_collab_model()
             recommendations = content_model.recommend_items(user_id=user_id, topn=10)
         else:
             # If user doesn't exist, ask for input and calculate BMR, then use popularity-based recommendations
@@ -79,7 +88,7 @@ if user_id:
             st.write(f"Your calculated calorie limit is {calorie_limit:.2f} kcal/day.")
 
             
-
+            popularity_model = load_popularity_model()
             # Use popularity-based recommendations
             recommendations = popularity_model.recommend_items(
                 calorie_limit=calorie_limit / 7, items_to_ignore=[], topn=10
