@@ -3,6 +3,7 @@ import streamlit as st
 import joblib
 from content_based_recommender import ContentBasedRecommender
 from popularity_recommender import PopularityRecommender
+from cf_recommender import CFRecommender  # Import your collaborative filtering recommender
 
 # Load datasets
 @st.cache_data
@@ -31,7 +32,18 @@ def load_content_model():
 def load_popularity_model():
     return PopularityRecommender(ratings, recipes)
 
+# Load or Initialize Collaborative Filtering Model
+@st.cache_resource
+def load_collab_model():
+    return CFRecommender(
+        recipe_df=recipes, 
+        interactions_train_indexed_df=ratings.set_index("user_id"), 
+        user_df=users
+    )
+
+
 content_model = load_content_model()
+collab_model = load_collab_model()
 popularity_model = load_popularity_model()
 
 # Function to calculate BMR
@@ -63,8 +75,8 @@ if user_id_input:
 
         # Check if the user_id exists in the dataset
         if user_id in users['user_id'].values:
-            # If user exists, use content-based recommendations
-            recommendations = content_model.recommend_items(user_id=user_id, topn=10)
+            # If user exists, use collaborative filtering for recommendations
+            recommendations = collab_model.recommend_items(user_id=user_id, topn=10)
         else:
             # If user doesn't exist, ask for input and calculate BMR, then use popularity-based recommendations
             weight = st.number_input("Enter your weight (kg):", min_value=30.0, step=0.1)
@@ -81,15 +93,14 @@ if user_id_input:
             calorie_limit = bmr * activity_factors[activity_level.lower()]
             st.write(f"Your calculated calorie limit is {calorie_limit:.2f} kcal/day.")
 
-            
 
+            
             # Use popularity-based recommendations
             recommendations = popularity_model.recommend_items(
-                calorie_limit=calorie_limit / 3, items_to_ignore=[], topn=10
+                calorie_limit=calorie_limit / 7, items_to_ignore=[], topn=10
             )
 
-
-            # Save new user details to users.csv
+             # Save new user details to users.csv
             new_user_data = {
                 'user_id': user_id,
                 'weight': weight,
