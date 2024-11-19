@@ -5,7 +5,7 @@ import pandas as pd
 
 class CFRecommender:
     MODEL_NAME = 'Efficient On-Demand Collaborative SVD'
-    NUMBER_OF_FACTORS_MF = 100
+    NUMBER_OF_FACTORS_MF = 50
 
     def __init__(self, recipe_df=None, interactions_train_indexed_df=None, user_df=None):
         # Reset index to avoid errors during pivot
