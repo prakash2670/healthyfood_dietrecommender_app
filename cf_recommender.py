@@ -1,22 +1,25 @@
-import pandas as pd
-import numpy as np
 from scipy.sparse import csr_matrix
 from sklearn.decomposition import TruncatedSVD
+import numpy as np
+import pandas as pd
 
 class CFRecommender:
     MODEL_NAME = 'Efficient On-Demand Collaborative SVD'
     NUMBER_OF_FACTORS_MF = 100
 
     def __init__(self, recipe_df=None, interactions_train_indexed_df=None, user_df=None):
-        # Prepare the sparse matrix for SVD
+        # Reset index to avoid errors during pivot
         interactions_train_indexed_df = interactions_train_indexed_df.reset_index()
-        self.users_items_pivot_matrix_df = interactions_train_indexed_df.pivot(
-            index='user_id', columns='recipe_id', values='rating').fillna(0)
+        
+        # Create the sparse matrix directly instead of a full pivot matrix
+        self.users_items_sparse_matrix = csr_matrix(
+            (interactions_train_indexed_df['rating'], 
+             (interactions_train_indexed_df['user_id'], interactions_train_indexed_df['recipe_id'])),
+            shape=(len(user_df), len(recipe_df))
+        )
 
-        self.users_items_pivot_sparse_matrix = csr_matrix(self.users_items_pivot_matrix_df)
-        self.users_ids = list(self.users_items_pivot_matrix_df.index)
-        self.recipe_ids = list(self.users_items_pivot_matrix_df.columns)
-
+        self.users_ids = user_df['user_id'].values
+        self.recipe_ids = recipe_df['recipe_id'].values
         self.recipe_df = recipe_df
         self.user_df = user_df
         print("Initialized recommender. Ready to process on demand.")
@@ -27,8 +30,8 @@ class CFRecommender:
             return None
 
         # Get the user's row index in the sparse matrix
-        user_index = self.users_ids.index(user_id)
-        user_ratings_sparse = self.users_items_pivot_sparse_matrix[user_index]
+        user_index = np.where(self.users_ids == user_id)[0][0]
+        user_ratings_sparse = self.users_items_sparse_matrix[user_index]
 
         # Perform SVD on the specific user row (low memory usage)
         svd = TruncatedSVD(n_components=self.NUMBER_OF_FACTORS_MF, algorithm='randomized')
@@ -60,7 +63,7 @@ class CFRecommender:
 
         # Apply calorie filtering
         recommendations_df = self.get_recommendation_for_user_calorie_count(recommendations_df, user_id)
-        
+
         return recommendations_df
 
     def get_recommendation_for_user_calorie_count(self, cal_rec_df, user_id):
