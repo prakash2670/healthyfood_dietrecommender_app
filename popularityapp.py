@@ -1,7 +1,7 @@
 import pandas as pd
+import numpy as np
 import streamlit as st
-import joblib
-from content_based_recommender import ContentBasedRecommender
+from content_recommender import ContentBasedRecommender
 from popularity_recommender import PopularityRecommender
 
 # Load datasets
@@ -14,25 +14,9 @@ def load_data():
 
 users, ratings, recipes = load_data()
 
-# Load or Initialize Content-Based Recommender
-@st.cache_resource
-def load_content_model():
-    try:
-        return joblib.load("content_based_recommender_model.pkl")
-    except Exception:
-        return ContentBasedRecommender(
-            recipe_df=recipes, 
-            interactions_train_indexed_df=ratings.set_index("user_id"), 
-            user_df=users
-        )
-
-# Load or Initialize Popularity-Based Recommender
-@st.cache_resource
-def load_popularity_model():
-    return PopularityRecommender(ratings, recipes)
-
-content_model = load_content_model()
-popularity_model = load_popularity_model()
+# Initialize Recommenders
+content_recommender = ContentBasedRecommender(recipes, ratings, users)
+popularity_recommender = PopularityRecommender(ratings, recipes)
 
 # Function to calculate BMR
 def calculate_bmr(weight, height, age, gender):
@@ -52,18 +36,46 @@ activity_factors = {
     'extra active': 1.9
 }
 
+# Hybrid Recommendation System
+def hybrid_recommend(user_id, calorie_limit, topn=10):
+    """Combines recommendations from content and popularity recommenders."""
+    # Content-based recommendations
+    content_recs = content_recommender.recommend_items(user_id=user_id, topn=topn)
+    
+    # Popularity-based recommendations
+    popularity_recs = popularity_recommender.recommend_items(
+        calorie_limit=calorie_limit, items_to_ignore=[], topn=topn
+    )
+    
+    # Merge recommendations by matching recipe_id and prioritize high ratings
+    hybrid_recs = content_recs.merge(
+        popularity_recs, on='recipe_id', suffixes=('_content', '_popularity')
+    )
+    hybrid_recs = hybrid_recs.sort_values(by=['recStrength_content', 'recStrength_popularity'], ascending=False)
+    return hybrid_recs.head(topn)[['recipe_id', 'recipe_name', 'calories', 'diet_labels']]
+
 # Streamlit UI
-st.title("Health Food and Diet Recommendation System")
+st.title("Hybrid Diet Recommendation System")
 user_id = st.text_input("Enter User ID:")
 
 if user_id:
     try:
         user_id = int(user_id)
         if user_id in users['user_id'].values:
-            # If user exists, use content-based recommendations
-            recommendations = content_model.recommend_items(user_id=user_id, topn=10)
+            st.write(f"Welcome back, User {user_id}!")
+            calorie_limit = users.loc[users['user_id'] == user_id, 'calories_per_day'].values[0]
+            
+            # Generate Hybrid Recommendations
+            st.subheader("Hybrid Recommendations")
+            recommendations = hybrid_recommend(user_id=user_id, calorie_limit=calorie_limit / 3, topn=10)
+            if not recommendations.empty:
+                st.table(recommendations)
+            else:
+                st.warning("No recommendations available for your preferences.")
         else:
-            # If user doesn't exist, ask for input and calculate BMR, then use popularity-based recommendations
+            st.warning("User ID not found. Please provide additional details.")
+            
+            # Input new user details
             weight = st.number_input("Enter your weight (kg):", min_value=30.0, step=0.1)
             height = st.number_input("Enter your height (cm):", min_value=100.0, step=0.1)
             age = st.number_input("Enter your age:", min_value=10, step=1)
@@ -72,21 +84,26 @@ if user_id:
                 "Select your activity level:",
                 ['Sedentary', 'Light Active', 'Moderately Active', 'Very Active', 'Extra Active']
             )
-
+            
             # Calculate BMR and calorie intake
             bmr = calculate_bmr(weight, height, age, gender)
             calorie_limit = bmr * activity_factors[activity_level.lower()]
             st.write(f"Your calculated calorie limit is {calorie_limit:.2f} kcal/day.")
-
+            
             
 
-            # Use popularity-based recommendations
-            recommendations = popularity_model.recommend_items(
+            # Generate Popularity-Based Recommendations
+            st.subheader("Popularity-Based Recommendations")
+            recommendations = popularity_recommender.recommend_items(
                 calorie_limit=calorie_limit / 7, items_to_ignore=[], topn=10
             )
+            if not recommendations.empty:
+                st.table(recommendations)
+            else:
+                st.warning("No recommendations available for your calorie limit.")
 
 
-             # Save new user details to users.csv
+            # Save new user details to users.csv
             new_user_data = {
                 'user_id': user_id,
                 'weight': weight,
@@ -98,11 +115,6 @@ if user_id:
             users = pd.concat([users, pd.DataFrame([new_user_data])], ignore_index=True)
             users.to_csv("users.csv", index=False)
             st.success("New user details saved successfully!")
-
-        if not recommendations.empty:
-            st.table(recommendations)
-        else:
-            st.warning("No recommendations available.")
 
     except ValueError:
         st.error("Invalid User ID. Please enter a numeric value.")
