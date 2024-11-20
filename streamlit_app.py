@@ -75,7 +75,7 @@ activity_factors = {
 }
 
 # Layout Enhancements
-st.image("logo.png", use_column_width=True)  # Add your logo
+st.image("logo.png", use_container_width=True)  # Add your logo
 st.title("🥗 Health Food and Diet Recommendation System")
 
 # Create layout for interactive form
