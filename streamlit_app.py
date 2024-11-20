@@ -43,7 +43,7 @@ def load_collab_model():
 
 
 content_model = load_content_model()
-collab_model = load_collab_model()
+# collab_model = load_collab_model()
 popularity_model = load_popularity_model()
 
 # Function to calculate BMR
@@ -76,7 +76,7 @@ if user_id_input:
         # Check if the user_id exists in the dataset
         if user_id in users['user_id'].values:
             # If user exists, use collaborative filtering for recommendations
-            recommendations = collab_model.recommend_items(user_id=user_id, topn=10)
+            recommendations = content_model.recommend_items(user_id=user_id, topn=10)
         else:
             # If user doesn't exist, ask for input and calculate BMR, then use popularity-based recommendations
             weight = st.number_input("Enter your weight (kg):", min_value=30.0, step=0.1)
