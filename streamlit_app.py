@@ -88,7 +88,7 @@ activity_factors = {
     "extra active": 1.9,
 }
 
-# Streamlit UI
+# Streamlit UI for the App
 st.title("🍏 Health Food and Diet Recommendation System")
 
 # Display Logo
