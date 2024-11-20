@@ -43,7 +43,7 @@ def load_collab_model():
 
 
 content_model = load_content_model()
-collab_model = load_collab_model()
+# collab_model = load_collab_model()
 popularity_model = load_popularity_model()
 
 # Function to calculate BMR
@@ -75,9 +75,11 @@ if user_id_input:
 
         # Check if the user_id exists in the dataset
         if user_id in users['user_id'].values:
+            st.write("Welcome back User !!!")
             # If user exists, use collaborative filtering for recommendations
-            recommendations = collab_model.recommend_items(user_id=user_id, topn=10)
+            recommendations = content_model.recommend_items(user_id=user_id, topn=10)
         else:
+            st.write("New User Detected")
             # If user doesn't exist, ask for input and calculate BMR, then use popularity-based recommendations
             weight = st.number_input("Enter your weight (kg):", min_value=30.0, step=0.1)
             height = st.number_input("Enter your height (cm):", min_value=100.0, step=0.1)
@@ -100,7 +102,14 @@ if user_id_input:
                 calorie_limit=calorie_limit / 7, items_to_ignore=[], topn=10
             )
 
-             # Save new user details to users.csv
+             
+
+        if not recommendations.empty:
+            st.table(recommendations)
+        else:
+            st.warning("No recommendations available.")
+
+        # Save new user details to users.csv
             new_user_data = {
                 'user_id': user_id,
                 'weight': weight,
@@ -112,11 +121,6 @@ if user_id_input:
             users = pd.concat([users, pd.DataFrame([new_user_data])], ignore_index=True)
             users.to_csv("users.csv", index=False)
             st.success("New user details saved successfully!")
-
-        if not recommendations.empty:
-            st.table(recommendations)
-        else:
-            st.warning("No recommendations available.")
     
     except ValueError:
         st.error("Invalid User ID. Please enter a numeric value.")
