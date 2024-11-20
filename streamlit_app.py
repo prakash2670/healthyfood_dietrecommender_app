@@ -7,6 +7,9 @@ from cf_recommender import CFRecommender
 import matplotlib.pyplot as plt
 import random
 
+# Set Streamlit page config at the very top
+st.set_page_config(page_title="Health Food and Diet Recommendation", page_icon="🍏", layout="wide")
+
 # Load datasets
 @st.cache_data
 def load_data():
@@ -54,7 +57,7 @@ def calculate_bmr(weight, height, age, gender):
         raise ValueError("Invalid gender. Please enter 'male' or 'female'.")
 
 # User Profile
-def update_user_profile(user_id, weight, height, age, gender):
+def update_user_profile(user_id, weight, height, age, gender, activity_level):
     height_inch = round(height / 2.54, 2)
     weight_lb = round(weight * 2.205, 2)
     height_mtr = height / 100
@@ -86,36 +89,50 @@ activity_factors = {
 }
 
 # Streamlit UI
-st.title("Health Food and Diet Recommendation System")
+st.title("🍏 Health Food and Diet Recommendation System")
+
+# Display Logo
+st.image("logo.png", width=200)  # Replace with your logo's file path if necessary
+
+# Adding a description with emojis
+st.markdown(
+    """
+    Welcome to the **Health Food and Diet Recommendation System**! \n 🍽️ 
+    Get personalized recommendations based on your profile and activity level. 📊
+    """
+)
+
 tab1, tab2, tab3 = st.tabs(["📊 Recommendations", "🧑‍⚕️ User Profile", "📝 Diet Tips"])
 
 # User Input
 with tab1:
-    user_id_input = st.text_input("Enter User ID:")
+    st.subheader("Enter Your Details to Get Recommendations")
+    user_id_input = st.text_input("🔢 Enter User ID:", key="user_id_input")
+
     if user_id_input:
         try:
             user_id = int(user_id_input)
 
             if user_id in users["user_id"].values:
-                st.write("### Recommendations")
+                st.success("✅ User found! Showing personalized recommendations...")
                 recommendations = content_model.recommend_items(user_id=user_id, topn=10)
             else:
-                st.write("### New User Detected")
-                weight = st.number_input("Enter your weight (kg):", min_value=30.0, step=0.1)
-                height = st.number_input("Enter your height (cm):", min_value=100.0, step=0.1)
-                age = st.number_input("Enter your age:", min_value=10, step=1)
-                gender = st.selectbox("Select your gender:", ["Male", "Female"])
+                st.warning("⚠️ New User Detected! Let's create your profile... 💡")
+                weight = st.number_input("⚖️ Enter your weight (kg):", min_value=30.0, step=0.1)
+                height = st.number_input("📏 Enter your height (cm):", min_value=100.0, step=0.1)
+                age = st.number_input("🎂 Enter your age:", min_value=10, step=1)
+                gender = st.selectbox("🚻 Select your gender:", ["Male", "Female"])
                 activity_level = st.selectbox(
-                    "Select your activity level:",
+                    "💪 Select your activity level:",
                     ["Sedentary", "Light Active", "Moderately Active", "Very Active", "Extra Active"],
                 )
 
                 # Update user profile
-                new_user_data = update_user_profile(user_id, weight, height, age, gender)
+                new_user_data = update_user_profile(user_id, weight, height, age, gender, activity_level)
                 users = pd.concat([users, pd.DataFrame([new_user_data])], ignore_index=True)
                 users.to_csv("users.csv", index=False)
 
-                st.success("New user profile updated successfully!")
+                st.success("✅ New user profile updated successfully! 🎉")
                 recommendations = popularity_model.recommend_items(
                     calorie_limit=new_user_data["calories_per_day"] / 7, items_to_ignore=[], topn=10
                 )
@@ -123,47 +140,54 @@ with tab1:
             if not recommendations.empty:
                 st.table(recommendations)
             else:
-                st.warning("No recommendations available.")
+                st.warning("⚠️ No recommendations available.")
         except ValueError:
-            st.error("Invalid User ID. Please enter a numeric value.")
+            st.error("❌ Invalid User ID. Please enter a numeric value.")
 
-# User Profile
+# User Profile Tab
 with tab2:
-    user_id = int(user_id_input)
-    user_details = users[users["user_id"] == user_id].iloc[0]
-    if not user_details.empty:
-        st.write("### User Profile")
-        st.table(user_details)
+    if user_id_input:
+        try:
+            user_id = int(user_id_input)  # Convert input to integer
+            user_details = users[users["user_id"] == user_id]  # Filter user details
 
-        # Calorie distribution chart
-        calorie_distribution = {
-            "Balanced Diet": 50,
-            "Low Protein": 25,
-            "Low Fat": 15,
-            "High Carb": 10,
-        }
+            if not user_details.empty:
+                st.write("### 👤 User Profile")
+                st.table(user_details)
 
-        fig, ax = plt.subplots()
-        ax.pie(
-            calorie_distribution.values(),
-            labels=calorie_distribution.keys(),
-            autopct="%1.1f%%",
-            startangle=90,
-        )
-        ax.axis("equal")
-        st.write("### Diet Type Calorie Distribution")
-        st.pyplot(fig)
-    else:
-        st.warning("User profile not available.")
+                # Calorie distribution chart
+                calorie_distribution = {
+                    "Balanced Diet 🍽️": 50,
+                    "Low Protein 🍗": 25,
+                    "Low Fat 🥑": 15,
+                    "High Carb 🍞": 10,
+                }
 
-# Diet Tips
+                fig, ax = plt.subplots()
+                ax.pie(
+                    calorie_distribution.values(),
+                    labels=calorie_distribution.keys(),
+                    autopct="%1.1f%%",
+                    startangle=90,
+                )
+                ax.axis("equal")
+                st.write("### 🥗 Diet Type Calorie Distribution")
+                st.pyplot(fig)
+            else:
+                st.warning(f"⚠️ User ID {user_id} not found in the database. Please enter a valid User ID.")
+        except ValueError:
+            st.error("❌ Invalid User ID. Please enter a numeric value.")
+
+# Diet Tips Tab
 with tab3:
     tips = [
-        "Stay hydrated throughout the day.",
-        "Include a mix of protein, carbs, and fats in each meal.",
-        "Avoid processed foods and focus on whole, fresh ingredients.",
-        "Plan your meals ahead to stay consistent.",
-        "Don't skip meals to maintain energy levels.",
+        "💧 Stay hydrated throughout the day.",
+        "🍗 Include a mix of protein, carbs, and fats in each meal.",
+        "🥦 Avoid processed foods and focus on whole, fresh ingredients.",
+        "🍽️ Plan your meals ahead to stay consistent.",
+        "⏰ Don't skip meals to maintain energy levels.",
     ]
-    st.write("### Random Diet Tip")
-    st.write(f"💡 {random.choice(tips)}")
+    st.write("### 🌱 Random Diet Tip")
+    # Adding a clickable button for more tips
+    if st.button("Get Tip"):
+        st.write(f"💡 {random.choice(tips)}")
