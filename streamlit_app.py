@@ -117,18 +117,6 @@ if submit_button:
                     calorie_limit=calorie_limit / 7, items_to_ignore=[], topn=10
                 )
 
-                # Save the new user details
-                new_user_data = {
-                    'user_id': user_id,
-                    'weight': weight,
-                    'height': height,
-                    'age': age,
-                    'gender': gender,
-                    'calories_per_day': calorie_limit
-                }
-                users = pd.concat([users, pd.DataFrame([new_user_data])], ignore_index=True)
-                users.to_csv("users.csv", index=False)
-                st.success("New user details saved successfully!")
             else:
                 # Use collaborative filtering for existing users
                 recommendations = content_model.recommend_items(user_id=user_id, topn=10)
@@ -139,6 +127,20 @@ if submit_button:
                 st.table(recommendations)
             else:
                 st.warning("No recommendations available at the moment.")
+
+
+            # Save the new user details
+            new_user_data = {
+                    'user_id': user_id,
+                    'weight': weight,
+                    'height': height,
+                    'age': age,
+                    'gender': gender,
+                    'calories_per_day': calorie_limit
+            }
+            users = pd.concat([users, pd.DataFrame([new_user_data])], ignore_index=True)
+            users.to_csv("users.csv", index=False)
+            st.success("New user details saved successfully!")
 
             # Show a random health tip
             st.info(f"💡 **Health Tip:** {random.choice(health_tips)}")
