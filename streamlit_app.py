@@ -3,8 +3,7 @@ import streamlit as st
 import joblib
 from content_based_recommender import ContentBasedRecommender
 from popularity_recommender import PopularityRecommender
-from cf_recommender import CFRecommender  # Collaborative Filtering Recommender
-from PIL import Image
+from cf_recommender import CFRecommender
 import matplotlib.pyplot as plt
 import random
 
@@ -18,160 +17,153 @@ def load_data():
 
 users, ratings, recipes = load_data()
 
-# Load or Initialize Content-Based Recommender
+# Load or Initialize Models
 @st.cache_resource
 def load_content_model():
     try:
         return joblib.load("content_based_recommender_model.pkl")
     except Exception:
         return ContentBasedRecommender(
-            recipe_df=recipes, 
-            interactions_train_indexed_df=ratings.set_index("user_id"), 
-            user_df=users
+            recipe_df=recipes,
+            interactions_train_indexed_df=ratings.set_index("user_id"),
+            user_df=users,
         )
 
-# Load or Initialize Popularity-Based Recommender
 @st.cache_resource
 def load_popularity_model():
     return PopularityRecommender(ratings, recipes)
 
-# # Load or Initialize Collaborative Filtering Model
-# @st.cache_resource
-# def load_collab_model():
-#     return CFRecommender(
-#         recipe_df=recipes, 
-#         interactions_train_indexed_df=ratings.set_index("user_id"), 
-#         user_df=users
-#     )
+@st.cache_resource
+def load_collab_model():
+    return CFRecommender(
+        recipe_df=recipes,
+        interactions_train_indexed_df=ratings.set_index("user_id"),
+        user_df=users,
+    )
 
 content_model = load_content_model()
 popularity_model = load_popularity_model()
-# collab_model = load_collab_model()
 
 # Function to calculate BMR
 def calculate_bmr(weight, height, age, gender):
-    if gender.lower() == 'male':
+    if gender.lower() == "male":
         return 10 * weight + 6.25 * height - 5 * age + 5
-    elif gender.lower() == 'female':
+    elif gender.lower() == "female":
         return 10 * weight + 6.25 * height - 5 * age - 161
     else:
         raise ValueError("Invalid gender. Please enter 'male' or 'female'.")
 
+# User Profile
+def update_user_profile(user_id, weight, height, age, gender):
+    height_inch = round(height / 2.54, 2)
+    weight_lb = round(weight * 2.205, 2)
+    height_mtr = height / 100
+    bmi = round(weight / (height_mtr**2), 2)
+    bmr = calculate_bmr(weight, height, age, gender)
+    activity_factor = activity_factors[activity_level.lower()]
+    calories_per_day = round(bmr * activity_factor, 2)
+    return {
+        "user_id": user_id,
+        "Gender": gender,
+        "Height_inch": height_inch,
+        "Weight_lb": weight_lb,
+        "height_mtr": height_mtr,
+        "weight_kgs": weight,
+        "BMI": bmi,
+        "age": age,
+        "activity": activity_level,
+        "BMR": bmr,
+        "calories_per_day": calories_per_day,
+    }
+
 # Multiplication factors for activity levels
 activity_factors = {
-    'sedentary': 1.2,
-    'light active': 1.375,
-    'moderately active': 1.55,
-    'very active': 1.725,
-    'extra active': 1.9
+    "sedentary": 1.2,
+    "light active": 1.375,
+    "moderately active": 1.55,
+    "very active": 1.725,
+    "extra active": 1.9,
 }
 
-# Health Tips
-health_tips = [
-    "🍎 An apple a day keeps the doctor away!",
-    "💧 Drink at least 8 glasses of water daily.",
-    "🏃‍♂️ 30 minutes of exercise can boost your mood and health.",
-    "🥗 Include greens in every meal for better digestion.",
-    "🛌 A good night's sleep is key to a healthy life.",
-    "🍳 Cook meals at home to control ingredients and portions."
-]
+# Streamlit UI
+st.title("Health Food and Diet Recommendation System")
+tab1, tab2, tab3 = st.tabs(["📊 Recommendations", "🧑‍⚕️ User Profile", "📝 Diet Tips"])
 
-# UI Enhancements
-logo = Image.open("logo.png")  # Replace with your logo file
-st.image(logo, use_column_width=True)
-st.title("🌟 Health Food and Diet Recommendation System 🌟")
-st.markdown("Your personalized health companion for smarter food choices!")
+# User Input
+with tab1:
+    user_id_input = st.text_input("Enter User ID:")
+    if user_id_input:
+        try:
+            user_id = int(user_id_input)
 
-# Sidebar for User Input
-st.sidebar.header("User Input")
-user_id_input = st.sidebar.text_input("Enter User ID:", placeholder="e.g., 12345")
-
-# Main Tabs
-tab1, tab2, tab3 = st.tabs(["🍲 Recommendations", "🧍 Profile", "💡 Tips"])
-
-if user_id_input:
-    try:
-        # Ensure user_id is an integer
-        user_id = int(user_id_input)
-
-        # Check if the user_id exists in the dataset
-        if user_id in users['user_id'].values:
-            st.sidebar.success("Welcome back, User!")
-            
-            # Collaborative Filtering Recommendations
-            with tab1:
+            if user_id in users["user_id"].values:
+                st.write("### Recommendations")
                 recommendations = content_model.recommend_items(user_id=user_id, topn=10)
-                if not recommendations.empty:
-                    st.success("Here are your personalized recommendations!")
-                    st.table(recommendations)
-                else:
-                    st.warning("No recommendations available.")
-            
-        else:
-            st.sidebar.warning("New User Detected! Fill in your details below.")
-            
-            # New User Input Form
-            with st.sidebar:
+            else:
+                st.write("### New User Detected")
                 weight = st.number_input("Enter your weight (kg):", min_value=30.0, step=0.1)
                 height = st.number_input("Enter your height (cm):", min_value=100.0, step=0.1)
                 age = st.number_input("Enter your age:", min_value=10, step=1)
-                gender = st.radio("Select your gender:", ['Male', 'Female'])
+                gender = st.selectbox("Select your gender:", ["Male", "Female"])
                 activity_level = st.selectbox(
                     "Select your activity level:",
-                    ['Sedentary', 'Light Active', 'Moderately Active', 'Very Active', 'Extra Active']
+                    ["Sedentary", "Light Active", "Moderately Active", "Very Active", "Extra Active"],
                 )
-            
-            # Calculate BMR and Calorie Intake
-            bmr = calculate_bmr(weight, height, age, gender)
-            calorie_limit = bmr * activity_factors[activity_level.lower()]
-            st.sidebar.write(f"Your calculated calorie limit is **{calorie_limit:.2f} kcal/day**.")
 
-            # Popularity-Based Recommendations
-            with tab1:
+                # Update user profile
+                new_user_data = update_user_profile(user_id, weight, height, age, gender)
+                users = pd.concat([users, pd.DataFrame([new_user_data])], ignore_index=True)
+                users.to_csv("users.csv", index=False)
+
+                st.success("New user profile updated successfully!")
                 recommendations = popularity_model.recommend_items(
-                    calorie_limit=calorie_limit / 7, items_to_ignore=[], topn=10
+                    calorie_limit=new_user_data["calories_per_day"] / 7, items_to_ignore=[], topn=10
                 )
-                if not recommendations.empty:
-                    st.success("Here are some popular choices for you!")
-                    st.table(recommendations)
-                else:
-                    st.warning("No recommendations available.")
-            
-            # Save new user details
-            new_user_data = {
-                'user_id': user_id,
-                'weight': weight,
-                'height': height,
-                'age': age,
-                'gender': gender,
-                'calories_per_day': calorie_limit
-            }
-            users = pd.concat([users, pd.DataFrame([new_user_data])], ignore_index=True)
-            users.to_csv("users.csv", index=False)
-            st.sidebar.success("New user details saved successfully!")
 
-        # Show Random Tip
-        with tab3:
-            st.info(f"💡 **Health Tip of the Day:** {random.choice(health_tips)}")
+            if not recommendations.empty:
+                st.table(recommendations)
+            else:
+                st.warning("No recommendations available.")
+        except ValueError:
+            st.error("Invalid User ID. Please enter a numeric value.")
 
-        # User Profile
-        with tab2:
-            user_details = users[users['user_id'] == user_id]
-            if not user_details.empty:
-                st.write("### User Details")
-                st.table(user_details)
-            
-            # Pie Chart for Calorie Allocation
-            calorie_data = [calorie_limit / 3, calorie_limit / 3, calorie_limit / 3]
-            labels = ['Breakfast', 'Lunch', 'Dinner']
+# User Profile
+with tab2:
+    user_id = int(user_id_input)
+    user_details = users[users["user_id"] == user_id].iloc[0]
+    if not user_details.empty:
+        st.write("### User Profile")
+        st.table(user_details)
 
-            fig, ax = plt.subplots()
-            ax.pie(calorie_data, labels=labels, autopct='%1.1f%%', startangle=90)
-            ax.axis('equal')  # Equal aspect ratio ensures the pie is drawn as a circle.
-            st.write("### Recommended Calorie Distribution")
-            st.pyplot(fig)
+        # Calorie distribution chart
+        calorie_distribution = {
+            "Balanced Diet": 50,
+            "Low Protein": 25,
+            "Low Fat": 15,
+            "High Carb": 10,
+        }
 
-    except ValueError:
-        st.sidebar.error("Invalid User ID. Please enter a numeric value.")
-else:
-    st.info("Enter a User ID in the sidebar to get recommendations.")
+        fig, ax = plt.subplots()
+        ax.pie(
+            calorie_distribution.values(),
+            labels=calorie_distribution.keys(),
+            autopct="%1.1f%%",
+            startangle=90,
+        )
+        ax.axis("equal")
+        st.write("### Diet Type Calorie Distribution")
+        st.pyplot(fig)
+    else:
+        st.warning("User profile not available.")
+
+# Diet Tips
+with tab3:
+    tips = [
+        "Stay hydrated throughout the day.",
+        "Include a mix of protein, carbs, and fats in each meal.",
+        "Avoid processed foods and focus on whole, fresh ingredients.",
+        "Plan your meals ahead to stay consistent.",
+        "Don't skip meals to maintain energy levels.",
+    ]
+    st.write("### Random Diet Tip")
+    st.write(f"💡 {random.choice(tips)}")
