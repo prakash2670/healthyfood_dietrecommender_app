@@ -16,15 +16,19 @@ The HealthyFood Diet Recommender App is a machine learning-based application des
 1. Clone the repository:
    ```bash
    git clone https://github.com/prakash2670/healthyfood_dietrecommender_app.git
+   ```
 
    ```bash
    cd healthyfood_dietrecommender_app
+   ```
 
    ```bash
    pip install -r requirements.txt
+   ```
 
    ```bash
    python app.py
+   ```
 
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
 
