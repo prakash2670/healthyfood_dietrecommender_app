@@ -17,15 +17,15 @@ The HealthyFood Diet Recommender App is a machine learning-based application des
    ```bash
    git clone https://github.com/prakash2670/healthyfood_dietrecommender_app.git
    ```
-
+2. Navigate
    ```bash
    cd healthyfood_dietrecommender_app
    ```
-
+3. Install Requirements
    ```bash
    pip install -r requirements.txt
    ```
-
+4.Run the app
    ```bash
    python app.py
    ```
