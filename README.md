@@ -33,16 +33,16 @@ The HealthyFood Diet Recommender App is a machine learning-based application des
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
 
 
-Usage
-New Users: Enter your height and weight to calculate BMI and receive diet recommendations.
+## Usage
+   1.New Users: Enter your height and weight to calculate BMI and receive diet recommendations.
 
-Returning Users: Log in to receive diet recommendations based on your previous reviews and preferences.
+   2.Returning Users: Log in to receive diet recommendations based on your previous reviews and preferences.
 
-Contributing
+## Contributing
 Contributions are welcome! Please fork the repository and submit a pull request with your changes.
 
 
-Acknowledgments
+## Acknowledgments
 Public datasets used for training the models.
 
 Contributors and maintainers of the libraries and frameworks used in this project.
